@@ -1,0 +1,6 @@
+[submodule "ui"]
+	path = ui
+	url = https://github.com/romartiny/Awomy-React-UI
+[submodule "core"]
+	path = core
+	url = https://github.com/romartiny/Awomy-Laravel-Core
