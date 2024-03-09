@@ -1,0 +1,100 @@
+version: '3.7'
+services:
+
+  #Nginx Service
+  webserver:
+    image: nginx:alpine
+    container_name: awomy-webserver
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "8081:80"
+      - "444:443"
+    volumes:
+      - ./core/:/var/www/html
+      - ./docker-configs/nginx/conf.d/:/etc/nginx/conf.d/
+    depends_on:
+      - core
+    networks:
+      - awomy-network
+
+  #MySQL Service
+  db:
+    image: mysql:latest
+    platform: linux/x86_64
+    container_name: awomy-db
+    restart: unless-stopped
+    tty: true
+    command: mysqld --init-file="/etc/mysql/init/init.sql"
+    env_file:
+      - .env
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      - db:/var/lib/mysql
+      - ./docker-configs/mysql/mysql.cnf:/etc/mysql/mysql.cnf
+      - ./docker-configs/mysql/init.sql:/etc/mysql/init/init.sql
+    networks:
+      - awomy-network
+
+  #PHP Service
+  core:
+    build:
+      args:
+        user: ${UNIX_USER}
+        uid: ${UNIX_UID}
+      dockerfile: ./docker-configs/core/Dockerfile
+    image: awomy-core
+    container_name: awomy-core
+    command: bash -c "php artisan migrate && php-fpm"
+    restart: unless-stopped
+    tty: true
+    env_file:
+      - .env
+    environment:
+      SERVICE_NAME: awomy-core
+      SERVICE_TAGS: dev
+      DB_CONNECTION: ${DB_CONNECTION}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_DATABASE: ${DB_DATABASE}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+    working_dir: /var/www/html
+    depends_on:
+      - db
+    networks:
+      - awomy-network
+    volumes:
+      - ./core/:/var/www/html/
+
+  # React Service
+  ui:
+    image: awomy-ui
+    build:
+      context: .
+      dockerfile: ./docker-configs/ui/Dockerfile
+      args:
+        REACT_APP_API_HOST: $REACT_APP_API_HOST
+        PORT: $PORT
+        EXTERNAL_PORT: $EXTERNAL_PORT
+    container_name: awomy-ui
+    restart: unless-stopped
+    tty: true
+    env_file:
+      - .env
+    ports:
+      - ${EXTERNAL_PORT}:${PORT}
+
+#Docker Networks
+networks:
+  awomy-network:
+    name: awomy-network
+    driver: bridge
+
+#Docker Volumes
+volumes:
+  db:
+    driver: local
