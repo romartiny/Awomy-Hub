@@ -39,6 +39,11 @@ COPY ./core/ /var/www/html
 # Copy existing application directory permissions
 COPY --chown=www-data:www-data ./core/ /var/www/html
 
+RUN chown -R www-data:www-data /var/www/html
+
+# Install
+RUN composer install
+
 # Expose port 9000 and start php-fpm server
 EXPOSE 9000
 
@@ -52,10 +57,19 @@ RUN mkdir -p /home/$user/.composer && \
     chown -R $user:$user /home/$user
 
 # Set ownership of the web directory
-RUN chown -R $user:$user /var/www/html
+# RUN chown -R $user:$user /var/www/html
 
 # Set user
 USER $user
 
-# Install
-RUN composer install
+
+
+# # Set ownership and permissions for storage and bootstrap directories
+# RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+# RUN chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache
+
+# # Set permissions for vendor directory (if necessary)
+# RUN chmod -R 777 /var/www/html/vendor/*
+
+# # Switch back to www-data user
+# USER www-data
